@@ -1,15 +1,21 @@
 package kafkaapp.service;
 
+import kafkaapp.config.KafkaConsumerConfiguration;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
+import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.listener.MessageListener;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -17,21 +23,24 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class KafkaService {
 
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final KafkaAdmin kafkaAdmin;
-    private final ConsumerFactory<String, String> consumerFactory;
 
-    @Value("${spring.kafka.bootstrap-servers}")
+//    private final KafkaConsumerConfiguration kafkaConsumerConfiguration;
+
+    @Value("${kafka.bootstrap-servers}")
     private String bootstrapServers;
 
-    public KafkaService(KafkaTemplate<String, String> kafkaTemplate, KafkaAdmin kafkaAdmin,ConsumerFactory<String, String> consumerFactory) {
+    public KafkaService(KafkaTemplate<String, String> kafkaTemplate, KafkaAdmin kafkaAdmin) {
         this.kafkaTemplate = kafkaTemplate;
         this.kafkaAdmin = kafkaAdmin;
-        this.consumerFactory = consumerFactory;
+//        this.kafkaConsumerConfiguration = kafkaConsumerConfiguration;
     }
 
     public void sendMessage(String topicName, String message) {
@@ -56,19 +65,20 @@ public class KafkaService {
         }
     }
 
-    public List<String> consume(String topicName) {
-        try (KafkaConsumer<String, String> consumer = (KafkaConsumer<String, String>) consumerFactory.createConsumer()) {
-            consumer.subscribe(Collections.singletonList(topicName));
-
-            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(1000));
-
-            List<String> messages = new ArrayList<>();
-            for (ConsumerRecord<String, String> record : records) {
-                messages.add(record.value());
-            }
-
-            return messages;
-        }
+    public List<String> consume(String topicName) throws InterruptedException {
+        List<String> messages = new ArrayList<>();
+//        CountDownLatch latch = new CountDownLatch(1);
+//
+//        ConcurrentMessageListenerContainer<String, String> container = kafkaConsumerConfiguration.kafkaListenerContainerFactory().createContainer(topicName);
+//        container.getContainerProperties().setMessageListener((MessageListener<String, String>) record -> {
+//            messages.add(record.value());
+//            latch.countDown();
+//        });
+//
+//        container.start();
+//        latch.await(10, TimeUnit.SECONDS);
+//        container.stop();
+//
+        return messages;
     }
-
 }

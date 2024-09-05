@@ -44,11 +44,9 @@ public class ConfController {
     }
 
     @GetMapping("/getNewRegisters/{conferenceID}")
-    public NewMembersResponse getNewRegisters(@PathVariable String conferenceID) {
-        // Get all members of the conference
+    public NewMembersResponse getNewRegisters(@PathVariable String conferenceID) throws InterruptedException {
         List<String> members = kafkaService.consume(conferenceID);
 
-        // Return the new members
         NewMembersResponse response = new NewMembersResponse();
         response.setNames(members);
         return response;

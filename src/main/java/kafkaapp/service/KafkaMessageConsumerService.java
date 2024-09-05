@@ -14,7 +14,7 @@ public class KafkaMessageConsumerService {
 	private static final Logger LOG = LoggerFactory.getLogger(KafkaMessageConsumerService.class);
 
 	@SuppressWarnings({ "static-method", "unused" })
-	@KafkaListener(topics = "topic2")
+	@KafkaListener(topics = "events1")
 	public void onMessage(@Payload String msg,
 		@Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
 		@Header(KafkaHeaders.RECEIVED_PARTITION_ID) Integer partition,
