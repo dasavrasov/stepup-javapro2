@@ -1,9 +1,11 @@
 package kafkaapp.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import kafkaapp.model.ConferenceRequest;
-import kafkaapp.model.NewMembersResponse;
 import kafkaapp.model.RegisterRequest;
-import kafkaapp.service.KafkaService;
+import kafkaapp.service.KafkaMessageConsumerService;
+import kafkaapp.service.KafkaMessageProducerService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,44 +14,52 @@ import java.util.*;
 @RestController
 public class ConfController {
 
-    private final KafkaService kafkaService;
+    private final KafkaMessageProducerService producerService;
 
-    private final Map<String, Set<String>> returnedMembers = new HashMap<>();
+    private KafkaMessageConsumerService kafkaMessageConsumerService;
 
-    public ConfController(KafkaService kafkaService) {
-        this.kafkaService = kafkaService;
-    }
+    private final ObjectMapper objectMapper;
 
-    @PutMapping("/addConference")
-    public void addConference(@RequestBody ConferenceRequest request) throws Exception {
-        String topicName = request.getConferenceID();
-
-        if (!kafkaService.topicExists(topicName)) {
-            kafkaService.createTopic(topicName);
-        }
-
-        kafkaService.sendMessage(topicName, request.getName());
+    public ConfController(KafkaMessageProducerService producerService, KafkaMessageConsumerService kafkaMessageConsumerService, ObjectMapper objectMapper) {
+        this.producerService = producerService;
+        this.kafkaMessageConsumerService = kafkaMessageConsumerService;
+        this.objectMapper = objectMapper;
     }
 
     @PutMapping("/register")
-    public ResponseEntity<String> register(@RequestBody RegisterRequest request) throws Exception {
-        String topicName = request.getConferenceID();
-
-        if (kafkaService.topicExists(topicName)) {
-            kafkaService.sendMessage(topicName, request.getName());
+    public ResponseEntity<String> register(@RequestBody RegisterRequest request) {
+        try {
+            if (!kafkaMessageConsumerService.getConferences().containsKey(request.getConferenceID())) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Conference with id "+request.getConferenceID()+" not found");
+            }
+            String requestJson = objectMapper.writeValueAsString(request);
+            producerService.send("registrations", requestJson);
             return ResponseEntity.ok().build();
-        } else {
-            return ResponseEntity.status(400).body("Conference not found");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error serializing request");
+        }
+    }
+    @PutMapping("/addConference")
+    public ResponseEntity<String>  addConference(@RequestBody ConferenceRequest request) {
+        try {
+            String requestJson = objectMapper.writeValueAsString(request);
+            producerService.send("conferences", requestJson);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error serializing request");
         }
     }
 
     @GetMapping("/getNewRegisters/{conferenceID}")
-    public NewMembersResponse getNewRegisters(@PathVariable String conferenceID) throws InterruptedException {
-        List<String> members = kafkaService.consume(conferenceID);
-
-        NewMembersResponse response = new NewMembersResponse();
-        response.setNames(members);
-        return response;
+    public ResponseEntity<List<String>> getNewRegisters(@PathVariable String conferenceID) {
+        Map<String, List<String>> registrations = kafkaMessageConsumerService.getRegistrations();
+        List<String> names = registrations.get(conferenceID);
+        if (names != null) {
+            return ResponseEntity.ok(names);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
+
 
 }
